@@ -22,6 +22,24 @@ def health():
     return {
         "status": "healthy"
     }
+    
+@app.get("/paper")
+def paper_info():
+    return {
+        "title": "Attention Is All You Need",
+        "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer",
+            "Niki Parmar",
+            "Jakob Uszkoreit",
+            "Llion Jones",
+            "Aidan N. Gomez",
+            "Łukasz Kaiser",
+            "Illia Polosukhin"
+        ],
+        "pages": 15,
+        "status": "ready"
+    }
 
 @app.get("/ask")
 def ask(question: str):

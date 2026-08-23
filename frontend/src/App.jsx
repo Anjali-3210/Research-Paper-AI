@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
@@ -10,95 +10,190 @@ function App() {
   const [answer, setAnswer] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const handleAsk = async () => {
-  if (!question.trim()) {
-    return
-  }
+  const [paper, setPaper] = useState(null)
+  const [paperLoading, setPaperLoading] = useState(true)
+  const [paperError, setPaperError] = useState("")
+  const [history, setHistory] = useState([])
 
-  setLoading(true)
-  setAnswer("")
+  useEffect(() => {
+    const fetchPaper = async () => {
+      try {
+        const response = await fetch("http://127.0.0.1:8000/paper")
 
-  try {
-    const response = await fetch(
-      `http://127.0.0.1:8000/ask?question=${encodeURIComponent(question)}`
-    )
+        if (!response.ok) {
+          throw new Error("Failed to fetch paper information")
+        }
 
-    const data = await response.json()
-
-    if (data.success) {
-      setAnswer(data.answer)
-    } else {
-      setAnswer(data.error)
+        const data = await response.json()
+        setPaper(data)
+      } catch (error) {
+        console.error("Paper API Error:", error)
+        setPaperError("Unable to load paper information.")
+      } finally {
+        setPaperLoading(false)
+      }
     }
-  } catch (error) {
-    console.error("API Error:", error)
-    setAnswer("Unable to connect to the backend.")
-  } finally {
-    setLoading(false)
+
+    fetchPaper()
+  }, [])
+
+  const handleAsk = async () => {
+    if (!question.trim()) {
+      return
+    }
+
+    setLoading(true)
+    setAnswer("")
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/ask?question=${encodeURIComponent(question)}`
+      )
+
+      const data = await response.json()
+
+      if (data.success) {
+          setAnswer(data.answer)
+          setHistory((prev) => [
+            ...prev,
+            {
+              question: question,
+              answer: data.answer,
+            },
+          ])
+      } else {
+        setAnswer(data.error)
+      }
+    } catch (error) {
+      console.error("API Error:", error)
+      setAnswer("Unable to connect to the backend.")
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   return (
     <div className="app">
-  <header className="header">
-    <h1>Research Paper AI</h1>
-    <p>Ask questions and get answers directly from your research paper.</p>
-  </header>
+      <header className="header">
+        <h1>Research Paper AI</h1>
+        <p>
+          Ask questions and get answers directly from your research paper.
+        </p>
+      </header>
 
-  <main className="main">
-    <div className="question-section">
-      <input
-        type="text"
-        placeholder="Ask a question about the paper..."
-        value={question}
-        onChange={(e) => setQuestion(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            handleAsk()
-          }
-        }}
-      />
+      <main className="main">
 
-      <div className="button-group">
-        <button
-          onClick={handleAsk}
-          disabled={loading || !question.trim()}
-        >
-          {loading ? "Thinking..." : "Ask"}
-        </button>
+        {paperError && (
+          <div className="paper-error">
+            {paperError}
+          </div>
+        )}
 
-        <button
-          onClick={() => {
-            setQuestion("")
-            setAnswer("")
-          }}
-          disabled={loading}
-        >
-          Clear
-        </button>
-      </div>
+        {paperLoading && (
+          <div className="paper-card">
+            <p>Loading paper information...</p>
+          </div>
+        )}
+
+        {paper && !paperLoading && (
+          <div className="paper-card">
+            <div>
+              <h2>{paper.title}</h2>
+
+              <p>{paper.authors.join(", ")}</p>
+
+              <div className="paper-meta">
+                <span>{paper.pages} pages</span>
+
+                <span className="status-badge">
+                  ● {paper.status === "ready" ? "Ready" : "Unavailable"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="question-section">
+          <input
+            type="text"
+            placeholder="Ask a question about the paper..."
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleAsk()
+              }
+            }}
+          />
+
+          <div className="button-group">
+            <button
+              onClick={handleAsk}
+              disabled={loading || !question.trim()}
+            >
+              {loading ? "Thinking..." : "Ask"}
+            </button>
+
+            <button
+              onClick={() => {
+                setQuestion("")
+                setAnswer("")
+                setHistory([])
+              }}
+              disabled={loading}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
+        {loading && (
+          <div className="loading">
+            <p>Analyzing the research paper...</p>
+          </div>
+        )}
+
+        {answer && (
+          <div className="answer">
+            <h2>Answer</h2>
+
+            <ReactMarkdown
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+            >
+              {answer}
+            </ReactMarkdown>
+          </div>
+        )}
+
+        {history.length > 0 && (
+          <div className="history">
+            <h2>Question History ({history.length})</h2>
+
+            {history.map((item, index) => (
+              <div
+                className="history-item"
+                key={index}
+                onClick={() => {
+                  setQuestion(item.question)
+                  setAnswer(item.answer)
+                }}
+              >
+                <h3>{item.question}</h3>
+
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {item.answer}
+                </ReactMarkdown>
+              </div>
+            ))}
+          </div>
+        )}
+
+      </main>
     </div>
-
-    {loading && (
-      <div className="loading">
-        <p>Analyzing the research paper...</p>
-      </div>
-    )}
-
-    {answer && (
-      <div className="answer">
-        <h2>Answer</h2>
-
-        <ReactMarkdown
-          remarkPlugins={[remarkMath]}
-          rehypePlugins={[rehypeKatex]}
-        >
-          {answer}
-        </ReactMarkdown>
-      </div>
-    )}
-  </main>
-</div>
   )
 }
 
