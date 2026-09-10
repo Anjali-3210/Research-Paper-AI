@@ -8,6 +8,7 @@ import "./App.css"
 function App() {
   const [question, setQuestion] = useState("")
   const [answer, setAnswer] = useState("")
+  const [sources, setSources] = useState([])
   const [loading, setLoading] = useState(false)
 
   const [paper, setPaper] = useState(null)
@@ -53,8 +54,10 @@ function App() {
       const data = await response.json()
 
       if (data.success) {
-          setAnswer(data.answer)
-          setHistory((prev) => [
+        setAnswer(data.answer)
+        setSources(data.sources)
+
+        setHistory((prev) => [
             ...prev,
             {
               question: question,
@@ -138,6 +141,7 @@ function App() {
               onClick={() => {
                 setQuestion("")
                 setAnswer("")
+                setSources([])
                 setHistory([])
               }}
               disabled={loading}
@@ -154,17 +158,36 @@ function App() {
         )}
 
         {answer && (
-          <div className="answer">
-            <h2>Answer</h2>
+            <>
+              <div className="answer">
+                <h2>Answer</h2>
 
-            <ReactMarkdown
-              remarkPlugins={[remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-            >
-              {answer}
-            </ReactMarkdown>
-          </div>
-        )}
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {answer}
+                </ReactMarkdown>
+              </div>
+
+              {sources.length > 0 && (
+                <div className="sources">
+                  <h2>Sources</h2>
+
+                  {sources.map((source, index) => (
+                    <div className="source-item" key={index}>
+                      <strong>📄 Page {source.page}</strong>
+                      <p>
+                        {source.content.length > 300
+                          ? `${source.content.slice(0, 300)}...`
+                          : source.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
         {history.length > 0 && (
           <div className="history">
