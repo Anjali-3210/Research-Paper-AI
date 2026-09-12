@@ -44,12 +44,13 @@ def paper_info():
 @app.get("/ask")
 def ask(question: str):
     try:
-        answer = ask_question(question)
+        result = ask_question(question)
 
         return {
             "success": True,
             "question": question,
-            "answer": answer
+            "answer": result["answer"],
+            "sources": result["sources"]
         }
 
     except Exception as error:
