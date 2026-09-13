@@ -1,40 +1,65 @@
 from dotenv import load_dotenv
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_chroma import Chroma
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import (
+    ChatGoogleGenerativeAI,
+    GoogleGenerativeAIEmbeddings
+)
 
 load_dotenv()
+
+
+PERSIST_DIRECTORY = "chroma_db"
+COLLECTION_NAME = "research_papers"
+
 
 embeddings = GoogleGenerativeAIEmbeddings(
     model="gemini-embedding-001"
 )
 
+
 vector_store = Chroma(
-    persist_directory="chroma_db",
-    collection_name="research_papers",
-    embedding_function=embeddings
+    collection_name=COLLECTION_NAME,
+    persist_directory=PERSIST_DIRECTORY,
+    embedding_function=embeddings,
 )
 
-def ask_question(query):
+
+def ask_question(query, history=None):
+
+    if history is None:
+        history = []
+        
+    retrieval_query = query
+
+    if history:
+        last_question = history[-1].get("question", "")
+
+        if last_question:
+            retrieval_query = f"{last_question} {query}"
+
+    # Retrieve relevant chunks from the research paper
     results_with_scores = vector_store.similarity_search_with_score(
-    query,
-    k=3
+        retrieval_query,
+        k=4
     )
 
+    # Filter results using similarity threshold
     threshold = 0.70
 
     results = [
         result
         for result, score in results_with_scores
         if score <= threshold
-    ]
-    
+    ][:3]
+
+    # No relevant information found
     if not results:
         return {
             "answer": "I could not find relevant information in the provided paper.",
             "sources": []
         }
 
+    # Prepare source information
     sources = [
         {
             "page": result.metadata.get("page", "Unknown"),
@@ -43,35 +68,52 @@ def ask_question(query):
         for result in results
     ]
 
+    # Combine retrieved chunks into context
     context = "\n\n".join(
         f"[Page {source['page']}]\n{source['content']}"
         for source in sources
     )
 
+    # Prepare previous conversation context
+    conversation_context = "\n\n".join(
+        f"Previous Question: {item.get('question', '')}\n"
+        f"Previous Answer: {item.get('answer', '')}"
+        for item in history[-5:]
+    )
+
+    # Gemini model
     model = ChatGoogleGenerativeAI(
         model="gemini-flash-latest",
         temperature=0
     )
 
+    # Grounded conversational RAG prompt
     prompt = f"""
-    You are a research paper assistant.
+You are a research paper assistant.
 
-    Answer the question using ONLY the information provided in the context.
+Answer the user's current question using ONLY the information provided
+in the research paper context.
 
-    Rules:
-    1. Do not use outside knowledge.
-    2. Do not make up or assume information that is not present in the context.
-    3. When using information from the context, cite the page number using [Page X].
-    4. If the answer cannot be determined from the context, say:
-    "I could not find the answer in the provided paper."
-    5. Give a clear and concise answer.
+Rules:
+1. Use the conversation history only to understand references such as
+   "it", "they", "this", or "that".
+2. Do not use outside knowledge.
+3. Do not make up or assume information that is not present in the paper context.
+4. When using information from the paper context, cite the page number
+   using [Page X].
+5. If the answer cannot be determined from the paper context, say:
+"I could not find the answer in the provided paper."
+6. Give a clear and concise answer.
 
-    Context:
-    {context}
+Previous Conversation:
+{conversation_context}
 
-    Question:
-    {query}
-    """
+Research Paper Context:
+{context}
+
+Current Question:
+{query}
+"""
 
     try:
         response = model.invoke(prompt)
@@ -98,8 +140,6 @@ def ask_question(query):
             "answer": user_message,
             "sources": sources
         }
-
-    print("\nFinal Answer:\n")
 
     return {
         "answer": response.text,

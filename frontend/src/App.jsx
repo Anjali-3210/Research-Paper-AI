@@ -45,11 +45,19 @@ function App() {
 
     setLoading(true)
     setAnswer("")
+    setSources([])
 
     try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/ask?question=${encodeURIComponent(question)}`
-      )
+      const response = await fetch("http://127.0.0.1:8000/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: question,
+          history: history,
+        }),
+      })
 
       const data = await response.json()
 
@@ -58,12 +66,13 @@ function App() {
         setSources(data.sources)
 
         setHistory((prev) => [
-            ...prev,
-            {
-              question: question,
-              answer: data.answer,
-            },
-          ])
+          ...prev,
+          {
+            question: question,
+            answer: data.answer,
+            sources: data.sources,
+          },
+        ])
       } else {
         setAnswer(data.error)
       }
@@ -74,6 +83,7 @@ function App() {
       setLoading(false)
     }
   }
+
 
   return (
     <div className="app">

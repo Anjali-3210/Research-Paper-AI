@@ -1,8 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.rag import ask_question
+from pydantic import BaseModel
 
 app = FastAPI()
+
+class AskRequest(BaseModel):
+    question: str
+    history: list[dict] = []
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,14 +46,17 @@ def paper_info():
         "status": "ready"
     }
 
-@app.get("/ask")
-def ask(question: str):
+@app.post("/ask")
+def ask(request: AskRequest):
     try:
-        result = ask_question(question)
+        result = ask_question(
+            request.question,
+            request.history
+        )
 
         return {
             "success": True,
-            "question": question,
+            "question": request.question,
             "answer": result["answer"],
             "sources": result["sources"]
         }
@@ -58,6 +66,6 @@ def ask(question: str):
 
         return {
             "success": False,
-            "question": question,
+            "question": request.question,
             "error": "Unable to process the question."
         }
