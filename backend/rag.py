@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import os
 from langchain_chroma import Chroma
 from langchain_google_genai import (
     ChatGoogleGenerativeAI,
@@ -8,7 +9,10 @@ from langchain_google_genai import (
 load_dotenv()
 
 
-PERSIST_DIRECTORY = "chroma_db"
+PERSIST_DIRECTORY = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    "chroma_db"
+)
 COLLECTION_NAME = "research_papers"
 
 
@@ -44,7 +48,7 @@ def ask_question(query, history=None):
     )
 
     # Filter results using similarity threshold
-    threshold = 0.70
+    threshold = 0.60
 
     results = [
         result
@@ -60,13 +64,18 @@ def ask_question(query, history=None):
         }
 
     # Prepare source information
-    sources = [
-        {
-            "page": result.metadata.get("page", "Unknown"),
-            "content": result.page_content
-        }
-        for result in results
-    ]
+    sources = []
+    seen_pages = set()
+
+    for result in results:
+        page = result.metadata.get("page", "Unknown")
+
+        if page not in seen_pages:
+            sources.append({
+                "page": page,
+                "content": result.page_content
+            })
+            seen_pages.add(page)
 
     # Combine retrieved chunks into context
     context = "\n\n".join(

@@ -1,3 +1,4 @@
+import os
 import time
 
 from dotenv import load_dotenv
@@ -8,7 +9,10 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 load_dotenv()
 
 
-PERSIST_DIRECTORY = "chroma_db"
+PERSIST_DIRECTORY = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    "chroma_db"
+)
 COLLECTION_NAME = "research_papers"
 
 
@@ -24,7 +28,7 @@ vector_store = Chroma(
 )
 
 
-question = "Why is it useful?"
+question = "What programming language was used to implement the Transformer?"
 
 
 print("\n" + "=" * 60)
