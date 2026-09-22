@@ -74,7 +74,8 @@ function App() {
           },
         ])
       } else {
-        setAnswer(data.error)
+          setAnswer(`⚠️ ${data.error || "Unable to process the question."}`)
+          setSources([])
       }
     } catch (error) {
       console.error("API Error:", error)
@@ -210,6 +211,7 @@ function App() {
                 onClick={() => {
                   setQuestion(item.question)
                   setAnswer(item.answer)
+                  setSources(item.sources || [])
                 }}
               >
                 <h3>{item.question}</h3>

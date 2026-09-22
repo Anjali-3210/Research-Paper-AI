@@ -1,13 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from rag import ask_question
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 app = FastAPI()
 
 class AskRequest(BaseModel):
     question: str
-    history: list[dict] = []
+    history: list[dict] = Field(default_factory=list)
+    
+    @field_validator("question")
+    @classmethod
+    def validate_question(cls, value):
+        if not value.strip():
+            raise ValueError("Question cannot be empty.")
+        return value.strip()
 
 app.add_middleware(
     CORSMiddleware,
