@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from rag import ask_question
 from pydantic import BaseModel, Field, field_validator
+from rag import ask_question, ask_comparison_question
 
 app = FastAPI()
 
@@ -75,4 +76,29 @@ def ask(request: AskRequest):
             "success": False,
             "question": request.question,
             "error": "Unable to process the question."
+        }
+        
+@app.post("/compare")
+def compare(request: AskRequest):
+    try:
+        result = ask_comparison_question(
+            request.question,
+            "paper1",
+            "paper2"
+        )
+
+        return {
+            "success": True,
+            "question": request.question,
+            "answer": result["answer"],
+            "sources": result["sources"]
+        }
+
+    except Exception as error:
+        print("Comparison API Error:", error)
+
+        return {
+            "success": False,
+            "question": request.question,
+            "error": "Unable to compare the papers."
         }
