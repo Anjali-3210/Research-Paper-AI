@@ -6,31 +6,45 @@ from langchain_chroma import Chroma
 
 load_dotenv()
 
-# 1. Load the research paper
-loader = PyMuPDFLoader("data/paper.pdf")
-documents = loader.load()
+import os
 
-# 2. Split the paper into chunks
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,
-    chunk_overlap=200
+PERSIST_DIRECTORY = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    "chroma_db"
 )
 
-chunks = text_splitter.split_documents(documents)
 
-print("Number of chunks:", len(chunks))
+def embed_paper(pdf_path, collection_name):
+    # 1. Load the research paper
+    loader = PyMuPDFLoader(pdf_path)
+    documents = loader.load()
 
-# 3. Create the embedding model
-embeddings = GoogleGenerativeAIEmbeddings(
-    model="gemini-embedding-001"
-)
+    # 2. Split the paper into chunks
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
 
-# 4. Store chunks and embeddings in ChromaDB
-vector_store = Chroma.from_documents(
-    documents=chunks,
-    embedding=embeddings,
-    persist_directory="chroma_db",
-    collection_name="research_papers"
-)
+    chunks = text_splitter.split_documents(documents)
 
-print("Vector store created successfully!")
+    print("Number of chunks:", len(chunks))
+
+    # 3. Create the embedding model
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="gemini-embedding-001"
+    )
+
+    # 4. Store chunks and embeddings in ChromaDB
+    vector_store = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        persist_directory=PERSIST_DIRECTORY,
+        collection_name=collection_name
+    )
+
+    print(f"Vector store created successfully: {collection_name}")
+
+    return {
+        "collection_name": collection_name,
+        "chunks": len(chunks)
+    }
