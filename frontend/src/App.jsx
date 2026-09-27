@@ -9,225 +9,451 @@ function App() {
   const [question, setQuestion] = useState("")
   const [answer, setAnswer] = useState("")
   const [sources, setSources] = useState([])
-  const [loading, setLoading] = useState(false)
-
-  const [paper, setPaper] = useState(null)
-  const [paperLoading, setPaperLoading] = useState(true)
-  const [paperError, setPaperError] = useState("")
   const [history, setHistory] = useState([])
 
+  const [paper, setPaper] = useState(null)
+
+  const [comparisonMode, setComparisonMode] = useState(false)
+  const [paper1, setPaper1] = useState("paper1")
+  const [paper2, setPaper2] = useState("paper2")
+
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
   useEffect(() => {
-    const fetchPaper = async () => {
-      try {
-        const response = await fetch("http://127.0.0.1:8000/paper")
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch paper information")
-        }
-
-        const data = await response.json()
+    fetch("http://127.0.0.1:8000/paper")
+      .then((response) => response.json())
+      .then((data) => {
         setPaper(data)
-      } catch (error) {
-        console.error("Paper API Error:", error)
-        setPaperError("Unable to load paper information.")
-      } finally {
-        setPaperLoading(false)
-      }
-    }
-
-    fetchPaper()
+      })
+      .catch(() => {
+        setPaper(null)
+      })
   }, [])
 
-  const handleAsk = async () => {
+  const askQuestion = async () => {
     if (!question.trim()) {
+      setError("Please enter a question.")
+      return
+    }
+
+    if (comparisonMode && paper1 === paper2) {
+      setError("Please select two different papers.")
       return
     }
 
     setLoading(true)
-    setAnswer("")
-    setSources([])
+    setError("")
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/ask", {
+      const endpoint = comparisonMode
+        ? "http://127.0.0.1:8000/compare"
+        : "http://127.0.0.1:8000/ask"
+
+      const requestBody = comparisonMode
+        ? {
+            question: question,
+            paper1_id: paper1,
+            paper2_id: paper2,
+          }
+        : {
+            question: question,
+            history: history,
+          }
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          question: question,
-          history: history,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const data = await response.json()
 
       if (data.success) {
         setAnswer(data.answer)
-        setSources(data.sources)
+        setSources(data.sources || [])
+        setError("")
 
-        setHistory((prev) => [
-          ...prev,
-          {
-            question: question,
-            answer: data.answer,
-            sources: data.sources,
-          },
-        ])
+        if (!comparisonMode) {
+          setHistory((prev) => [
+            ...prev,
+            {
+              question: question,
+              answer: data.answer,
+              sources: data.sources || [],
+            },
+          ])
+        }
       } else {
-          setAnswer(`⚠️ ${data.error || "Unable to process the question."}`)
-          setSources([])
+        setAnswer("")
+        setSources([])
+        setError(data.error || "Unable to process the question.")
       }
     } catch (error) {
-      console.error("API Error:", error)
-      setAnswer("Unable to connect to the backend.")
+      console.error(error)
+
+      setAnswer("")
+      setSources([])
+      setError("Unable to connect to the backend.")
     } finally {
       setLoading(false)
     }
   }
 
+  const clearChat = () => {
+    setQuestion("")
+    setAnswer("")
+    setSources([])
+    setHistory([])
+    setError("")
+  }
+
+  const handleHistoryClick = (item) => {
+    setQuestion(item.question)
+    setAnswer(item.answer)
+    setSources(item.sources || [])
+    setError("")
+  }
+
+  const getPaperTitle = (paperId) => {
+    if (paperId === "paper1") {
+      return "Attention Is All You Need"
+    }
+
+    if (paperId === "paper2") {
+      return "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    }
+
+    return paperId
+  }
 
   return (
     <div className="app">
-      <header className="header">
-        <h1>Research Paper AI</h1>
-        <p>
-          Ask questions and get answers directly from your research paper.
-        </p>
-      </header>
+      <div className="container">
 
-      <main className="main">
+        {/* Header */}
+        <header className="header">
+          <h1>Research Paper AI</h1>
 
-        {paperError && (
-          <div className="paper-error">
-            {paperError}
+          <p>
+            Ask questions about research papers using Retrieval-Augmented
+            Generation.
+          </p>
+        </header>
+
+        {/* Single Paper Information */}
+        {paper && !comparisonMode && (
+          <div className="paper-card">
+            <h2>{paper.title}</h2>
+
+            <p>
+              <strong>Authors:</strong>{" "}
+              {paper.authors?.join(", ")}
+            </p>
+
+            <p>
+              <strong>Pages:</strong> {paper.pages}
+            </p>
+
+            <span className="status">
+              ● {paper.status}
+            </span>
           </div>
         )}
 
-        {paperLoading && (
-          <div className="paper-card">
-            <p>Loading paper information...</p>
-          </div>
-        )}
+        {/* Mode Switch */}
+        <div className="mode-switch">
 
-        {paper && !paperLoading && (
-          <div className="paper-card">
-            <div>
-              <h2>{paper.title}</h2>
+          <button
+            className={
+              !comparisonMode
+                ? "mode-button active"
+                : "mode-button"
+            }
+            onClick={() => {
+              setComparisonMode(false)
+              setAnswer("")
+              setSources([])
+              setError("")
+            }}
+          >
+            Single Paper
+          </button>
 
-              <p>{paper.authors.join(", ")}</p>
+          <button
+            className={
+              comparisonMode
+                ? "mode-button active"
+                : "mode-button"
+            }
+            onClick={() => {
+              setComparisonMode(true)
+              setAnswer("")
+              setSources([])
+              setError("")
+            }}
+          >
+            Compare Papers
+          </button>
 
-              <div className="paper-meta">
-                <span>{paper.pages} pages</span>
+        </div>
 
-                <span className="status-badge">
-                  ● {paper.status === "ready" ? "Ready" : "Unavailable"}
+        {/* Comparison Paper Selection */}
+        {comparisonMode && (
+          <div className="comparison-card">
+
+            <h2>Compare Research Papers</h2>
+
+            <div className="paper-selectors">
+
+              <div className="paper-selector">
+
+                <label htmlFor="paper1">
+                  Paper 1
+                </label>
+
+                <select
+                  id="paper1"
+                  value={paper1}
+                  onChange={(event) =>
+                    setPaper1(event.target.value)
+                  }
+                >
+                  <option value="paper1">
+                    Attention Is All You Need
+                  </option>
+
+                  <option value="paper2">
+                    BERT: Pre-training of Deep Bidirectional Transformers
+                  </option>
+                </select>
+
+              </div>
+
+              <div className="paper-selector">
+
+                <label htmlFor="paper2">
+                  Paper 2
+                </label>
+
+                <select
+                  id="paper2"
+                  value={paper2}
+                  onChange={(event) =>
+                    setPaper2(event.target.value)
+                  }
+                >
+                  <option value="paper1">
+                    Attention Is All You Need
+                  </option>
+
+                  <option value="paper2">
+                    BERT: Pre-training of Deep Bidirectional Transformers
+                  </option>
+                </select>
+
+              </div>
+
+            </div>
+
+            <div className="selected-papers">
+
+              <div>
+                <strong>Paper 1:</strong>
+
+                <span>
+                  {getPaperTitle(paper1)}
                 </span>
               </div>
+
+              <div>
+                <strong>Paper 2:</strong>
+
+                <span>
+                  {getPaperTitle(paper2)}
+                </span>
+              </div>
+
             </div>
+
           </div>
         )}
 
-        <div className="question-section">
-          <input
-            type="text"
-            placeholder="Ask a question about the paper..."
+        {/* Question Section */}
+        <div
+          className="question-section"
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            padding: "28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+
+          <textarea
             value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleAsk()
+            onChange={(event) => {
+              setQuestion(event.target.value)
+
+              if (error) {
+                setError("")
               }
+            }}
+            placeholder={
+              comparisonMode
+                ? "Ask a question comparing the two papers..."
+                : "Ask a question about the research paper..."
+            }
+            rows={6}
+            style={{
+              width: "100%",
+              minHeight: "150px",
+              boxSizing: "border-box",
+              padding: "18px",
+              borderRadius: "10px",
+              border: "1px solid #333",
+              background: "#171717",
+              color: "#ffffff",
+              fontSize: "16px",
+              lineHeight: "1.5",
+              resize: "vertical",
+              outline: "none",
+              fontFamily: "inherit",
             }}
           />
 
-          <div className="button-group">
+          <div
+            className="button-row"
+            style={{
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+            }}
+          >
+
             <button
-              onClick={handleAsk}
-              disabled={loading || !question.trim()}
+              className="ask-button"
+              onClick={askQuestion}
+              disabled={loading}
             >
-              {loading ? "Thinking..." : "Ask"}
+              {loading
+                ? "Thinking..."
+                : comparisonMode
+                  ? "Compare Papers"
+                  : "Ask Question"}
             </button>
 
             <button
-              onClick={() => {
-                setQuestion("")
-                setAnswer("")
-                setSources([])
-                setHistory([])
-              }}
+              className="clear-button"
+              onClick={clearChat}
               disabled={loading}
             >
               Clear
             </button>
+
           </div>
+
         </div>
 
-        {loading && (
-          <div className="loading">
-            <p>Analyzing the research paper...</p>
+        {/* Error */}
+        {error && (
+          <div className="error-message">
+            {error}
           </div>
         )}
 
+        {/* Answer */}
         {answer && (
-            <>
-              <div className="answer">
-                <h2>Answer</h2>
+          <>
 
-                <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                >
-                  {answer}
-                </ReactMarkdown>
+            <div className="answer">
+
+              <h2>
+                {comparisonMode
+                  ? "Comparison Result"
+                  : "Answer"}
+              </h2>
+
+              <ReactMarkdown
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+              >
+                {answer}
+              </ReactMarkdown>
+
+            </div>
+
+            {/* Sources */}
+            {sources.length > 0 && (
+              <div className="sources">
+
+                <h2>Sources</h2>
+
+                {sources.map((source, index) => (
+                  <div
+                    className="source-item"
+                    key={index}
+                  >
+
+                    <strong>
+                      📄{" "}
+
+                      {comparisonMode && source.paper_id
+                        ? `${getPaperTitle(source.paper_id)} — `
+                        : ""}
+
+                      Page {source.page}
+                    </strong>
+
+                    <p>
+                      {source.content.length > 300
+                        ? `${source.content.slice(0, 300)}...`
+                        : source.content}
+                    </p>
+
+                  </div>
+                ))}
+
               </div>
+            )}
 
-              {sources.length > 0 && (
-                <div className="sources">
-                  <h2>Sources</h2>
+          </>
+        )}
 
-                  {sources.map((source, index) => (
-                    <div className="source-item" key={index}>
-                      <strong>📄 Page {source.page}</strong>
-                      <p>
-                        {source.content.length > 300
-                          ? `${source.content.slice(0, 300)}...`
-                          : source.content}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-        {history.length > 0 && (
+        {/* Question History */}
+        {!comparisonMode && history.length > 0 && (
           <div className="history">
-            <h2>Question History ({history.length})</h2>
+
+            <h2>Question History</h2>
 
             {history.map((item, index) => (
               <div
                 className="history-item"
                 key={index}
-                onClick={() => {
-                  setQuestion(item.question)
-                  setAnswer(item.answer)
-                  setSources(item.sources || [])
-                }}
+                onClick={() => handleHistoryClick(item)}
               >
-                <h3>{item.question}</h3>
 
-                <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                >
-                  {item.answer}
-                </ReactMarkdown>
+                <strong>
+                  {item.question}
+                </strong>
+
+                <p>
+                  {item.answer.length > 180
+                    ? `${item.answer.slice(0, 180)}...`
+                    : item.answer}
+                </p>
+
               </div>
             ))}
+
           </div>
         )}
 
-      </main>
+      </div>
     </div>
   )
 }

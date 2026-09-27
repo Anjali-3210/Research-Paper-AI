@@ -344,3 +344,127 @@ body {
   padding-left: 10px;
   background: rgba(99, 102, 241, 0.06);
 }
+
+/* Comparison Mode */
+
+.mode-switch {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.mode-button {
+  flex: 1;
+  padding: 12px 18px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #171717;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 15px;
+  transition: 0.2s ease;
+}
+
+.mode-button:hover {
+  border-color: #555;
+  color: #fff;
+}
+
+.mode-button.active {
+  background: #242424;
+  color: #fff;
+  border-color: #777;
+}
+
+.comparison-card {
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  background: #151515;
+}
+
+.comparison-card h2 {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+.paper-selectors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.paper-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paper-selector label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.paper-selector select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #1c1c1c;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+
+.paper-selector select:focus {
+  border-color: #666;
+}
+
+.selected-papers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.selected-papers div {
+  padding: 12px;
+  border-radius: 8px;
+  background: #1c1c1c;
+}
+
+.selected-papers strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.selected-papers span {
+  font-size: 14px;
+  color: #eee;
+}
+
+.error-message {
+  margin: 15px 0;
+  padding: 12px 15px;
+  border: 1px solid #5a3030;
+  border-radius: 8px;
+  background: #241616;
+  color: #ffb3b3;
+}
+
+/* Mobile layout */
+
+@media (max-width: 700px) {
+  .paper-selectors,
+  .selected-papers {
+    grid-template-columns: 1fr;
+  }
+
+  .mode-switch {
+    flex-direction: column;
+  }
+}

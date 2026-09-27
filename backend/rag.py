@@ -65,13 +65,23 @@ def retrieve_from_paper(query, paper_id, k=4, threshold=0.60):
     return sources
 
 def compare_papers(query, paper1_id, paper2_id):
+    paper1_query = (
+        f"{query} "
+        "Transformer self-attention multi-head attention architecture"
+    )
+
+    paper2_query = (
+        f"{query} "
+        "BERT bidirectional self-attention Transformer architecture"
+    )
+
     paper1_sources = retrieve_from_paper(
-        query,
+        paper1_query,
         paper1_id
     )
 
     paper2_sources = retrieve_from_paper(
-        query,
+        paper2_query,
         paper2_id
     )
 
@@ -81,21 +91,37 @@ def compare_papers(query, paper1_id, paper2_id):
             "sources": []
         }
 
-    paper1_context = "\n\n".join(
-        f"[Paper 1 - Page {source['page']}]\n{source['content']}"
-        for source in paper1_sources
-    )
+    if not paper1_sources:
+        paper1_context = (
+            "No relevant information was retrieved from Paper 1 "
+            "for this question."
+        )
+    else:
+        paper1_context = "\n\n".join(
+            f"[Paper 1 - Page {source['page']}]\n{source['content']}"
+            for source in paper1_sources
+        )
 
-    paper2_context = "\n\n".join(
-        f"[Paper 2 - Page {source['page']}]\n{source['content']}"
-        for source in paper2_sources
-    )
+    if not paper2_sources:
+        paper2_context = (
+            "No relevant information was retrieved from Paper 2 "
+            "for this question."
+        )
+    else:
+        paper2_context = "\n\n".join(
+            f"[Paper 2 - Page {source['page']}]\n{source['content']}"
+            for source in paper2_sources
+        )
 
     context = f"""
-PAPER 1:
+===== PAPER 1 =====
+Title: Attention Is All You Need
+
 {paper1_context}
 
-PAPER 2:
+===== PAPER 2 =====
+Title: BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding
+
 {paper2_context}
 """
 
@@ -112,23 +138,46 @@ def generate_comparison_answer(query, comparison_data):
     )
 
     prompt = f"""
-You are a research paper comparison assistant.
+You are an AI research paper comparison assistant.
 
-Compare the two research papers using ONLY the provided contexts.
+Your task is to compare two research papers using ONLY the
+information provided in the contexts below.
 
-Rules:
+STRICT RULES:
 1. Do not use outside knowledge.
-2. Do not make up information that is not present in the contexts.
-3. Clearly distinguish information from Paper 1 and Paper 2.
-4. Cite every important claim using the format:
+2. Do not make up or assume information.
+3. Keep Paper 1 and Paper 2 clearly separated.
+4. Every factual claim must have a page citation.
+5. Use citations exactly in this format:
    [Paper 1 - Page X]
    [Paper 2 - Page X]
-5. If information is available for only one paper, explicitly say so.
-6. If neither paper contains enough information to answer the question, say:
+6. If a fact is available in only one paper, explicitly mention that.
+7. If the provided context does not contain enough information,
+   say:
    "I could not find enough information in the provided papers."
-7. Give a concise, structured comparison.
+8. Do not claim that one paper is better unless the provided
+   context explicitly supports such a comparison.
+9. Keep the answer concise but informative.
 
-Context:
+STRUCTURE YOUR ANSWER AS:
+
+### Paper 1
+Explain the relevant approach, method, architecture, or finding
+from Paper 1 with citations.
+
+### Paper 2
+Explain the relevant approach, method, architecture, or finding
+from Paper 2 with citations.
+
+### Key Differences
+List the important differences between the two papers.
+Every difference must be supported by citations.
+
+### Similarities
+Mention important similarities if they are supported by
+the provided contexts.
+
+Research Paper Context:
 {comparison_data["context"]}
 
 Question:
@@ -169,10 +218,17 @@ def ask_comparison_question(query, paper1_id, paper2_id):
     if "answer" in comparison_data:
         return comparison_data
 
-    return generate_comparison_answer(
+    result = generate_comparison_answer(
         query,
         comparison_data
     )
+
+    return {
+        "answer": result["answer"],
+        "sources": result["sources"],
+        "paper1_id": paper1_id,
+        "paper2_id": paper2_id
+    }
 
 def ask_question(query, history=None, collection_name=COLLECTION_NAME):
 

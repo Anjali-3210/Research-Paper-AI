@@ -162,6 +162,8 @@ def compare(request: CompareRequest):
         return {
             "success": True,
             "question": request.question,
+            "paper1": papers[0],
+            "paper2": papers[1],
             "answer": result["answer"],
             "sources": result["sources"]
         }
