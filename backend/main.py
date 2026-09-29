@@ -134,7 +134,7 @@ def ask(request: AskRequest):
         return {
             "success": False,
             "question": request.question,
-            "error": "Unable to process the question."
+            "error": "AI service is currently unavailable. Please try again later."
         }
 
 
