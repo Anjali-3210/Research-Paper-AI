@@ -66,7 +66,8 @@ def get_comparison_papers(paper1_id, paper2_id):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173",
+    "https://research-paper-ai-1-9jkf.onrender.com",],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
