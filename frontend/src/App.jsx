@@ -21,7 +21,7 @@ function App() {
   const [error, setError] = useState("")
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/paper")
+    fetch("https://research-paper-ai-wp3m.onrender.com/paper")
       .then((response) => response.json())
       .then((data) => {
         setPaper(data)
@@ -47,8 +47,8 @@ function App() {
 
     try {
       const endpoint = comparisonMode
-        ? "http://127.0.0.1:8000/compare"
-        : "http://127.0.0.1:8000/ask"
+      ? "https://research-paper-ai-wp3m.onrender.com/compare"
+      : "https://research-paper-ai-wp3m.onrender.com/ask"
 
       const requestBody = comparisonMode
         ? {
